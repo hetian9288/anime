@@ -317,7 +317,7 @@
   }
   function rgbaToRgb(rgbaValue) {
     const rgba = /rgba\((\d+),\s*(\d+),\s*(\d+),\s*(\d+)\)/g.exec(rgbaValue);
-    return 'rgb(' + rgb[1] + ',' + rgb[2] + ',' + rgb[3] + ')';
+    return 'rgb(' + rgba[1] + ',' + rgba[2] + ',' + rgba[3] + ')';
   }
   function colorToRgb(val) {
     if (is.rgba(val)) return rgbaToRgb(val);

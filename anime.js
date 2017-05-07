@@ -5,6 +5,8 @@
  * @author Julian Garnier
  * @copyright ©2017 Julian Garnier
  * Released under the MIT license
+ * ------------
+ * 增加对 filter，rgba(rgba 暂时转成rgb)的支持
 **/
 
 (function(root, factory) {
@@ -46,6 +48,9 @@
   const validTransforms = ['translateX', 'translateY', 'translateZ', 'rotate', 'rotateX', 'rotateY', 'rotateZ', 'scale', 'scaleX', 'scaleY', 'scaleZ', 'skewX', 'skewY'];
   let transformString;
 
+  let validFilter = ['grayscale', 'sepia', 'saturate', 'hue-rotate', 'invert', 'opacity', 'brightness', 'contrast', 'blur'];
+  let filterString = 'filter';
+
   // Utils
 
   function stringContains(str, text) {
@@ -61,9 +66,10 @@
     fnc: a => typeof a === 'function',
     und: a => typeof a === 'undefined',
     hex: a => /(^#[0-9A-F]{6}$)|(^#[0-9A-F]{3}$)/i.test(a),
+    rgba: a => /^rgba/.test(a),
     rgb: a => /^rgb/.test(a),
     hsl: a => /^hsl/.test(a),
-    col: a => (is.hex(a) || is.rgb(a) || is.hsl(a))
+    col: a => (is.hex(a) || is.rgba(a) || is.rgb(a) || is.hsl(a))
   }
 
   // BezierEasing https://github.com/gre/bezier-easing
@@ -309,8 +315,12 @@
     }
     return `rgb(${r * 255},${g * 255},${b * 255})`;
   }
-
+  function rgbaToRgb(rgbaValue) {
+    const rgba = /rgba\((\d+),\s*(\d+),\s*(\d+),\s*(\d+)\)/g.exec(rgbaValue);
+    return 'rgb(' + rgb[1] + ',' + rgb[2] + ',' + rgb[3] + ')';
+  }
   function colorToRgb(val) {
+    if (is.rgba(val)) return rgbaToRgb(val);
     if (is.rgb(val)) return val;
     if (is.hex(val)) return hexToRgb(val);
     if (is.hsl(val)) return hslToRgb(val);
@@ -326,6 +336,11 @@
   function getTransformUnit(propName) {
     if (stringContains(propName, 'translate')) return 'px';
     if (stringContains(propName, 'rotate') || stringContains(propName, 'skew')) return 'deg';
+  }
+
+  function getFilterUnit(propName) {
+    if (stringContains(propName, 'blur')) return 'px';
+    if (stringContains(propName, 'hue-rotate')) return 'deg';
   }
 
   // Values
@@ -350,9 +365,10 @@
   }
 
   function getAnimationType(el, prop) {
+    if (is.dom(el) && arrayContains(validFilter, prop)) return 'filter';
     if (is.dom(el) && arrayContains(validTransforms, prop)) return 'transform';
     if (is.dom(el) && (el.getAttribute(prop) || (is.svg(el) && el[prop]))) return 'attribute';
-    if (is.dom(el) && (prop !== 'transform' && getCSSValue(el, prop))) return 'css';
+    if (is.dom(el) && (prop !== 'transform' && prop !== 'filter' && getCSSValue(el, prop))) return 'css';
     if (el[prop] != null) return 'object';
   }
 
@@ -373,8 +389,26 @@
     return arrayLength(value) ? value[0] : defaultVal;
   }
 
+  function getFilterValue(el, propName) {
+    const defaultUnit = getFilterUnit(propName);
+    const defaultVal = stringContains(propName, 'contrast') ? 1 : 0 + defaultUnit;
+    const str = el.style.filter;
+    if (!str) return defaultVal;
+    let match = [];
+    let props = [];
+    let values = [];
+    const rgx = /(\w+)\((.+?)\)/g;
+    while (match = rgx.exec(str)) {
+        props.push(match[1]);
+        values.push(match[2]);
+    }
+    const value = values.filter((val, i) => props[i] === propName );
+    return arrayLength(value) ? value[0] : defaultVal;
+  }
+
   function getOriginalTargetValue(target, propName) {
     switch (getAnimationType(target, propName)) {
+      case 'filter': return getFilterValue(target, propName);
       case 'transform': return getTransformValue(target, propName);
       case 'css': return getCSSValue(target, propName);
       case 'attribute': return target.getAttribute(propName);
@@ -564,6 +598,10 @@
     transform: (t, p, v, transforms, id) => {
       if (!transforms[id]) transforms[id] = [];
       transforms[id].push(`${p}(${v})`);
+    },
+    filter: (t, p, v, filters, id) => {
+        if (!filters[id]) filters[id] = [];
+        filters[id].push(`${p}(${v})`);
     }
   }
 
@@ -691,7 +729,7 @@
 
     function setAnimationsProgress(insTime) {
       let i = 0;
-      let transforms = {};
+      let transforms = {}, filters = {};
       const animations = instance.animations;
       while (i < arrayLength(animations)) {
         const anim = animations[i];
@@ -709,7 +747,11 @@
           if (round) value = Math.round(value * round) / round;
           return value;
         }), tween.to.strings);
-        setTweenProgress[anim.type](animatable.target, anim.property, progress, transforms, animatable.id);
+        if(anim.type === 'filter') {
+          setTweenProgress[anim.type](animatable.target, anim.property, progress, filters, animatable.id);
+        }else{
+          setTweenProgress[anim.type](animatable.target, anim.property, progress, transforms, animatable.id);
+        }
         anim.currentValue = progress;
         i++;
       }
@@ -720,6 +762,15 @@
             transformString = (getCSSValue(document.body, t) ? t : `-webkit-${t}`);
           }
           instance.animatables[id].target.style[transformString] = transforms[id].join(' ');
+        }
+      }
+      if (filters) {
+        let id; for (id in filters) {
+          if (!filterString) {
+            const t = 'filter';
+            transformString = (getCSSValue(document.body, t) ? t : `-webkit-${t}`);
+          }
+          instance.animatables[id].target.style[filterString] = filters[id].join(' ');
         }
       }
       instance.currentTime = insTime;

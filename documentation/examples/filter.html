@@ -41,7 +41,7 @@
 </head>
 <body>
 
-<div id="el" style="transform: translateX(850px); filter: blur(100px)"></div>
+<div id="el" style="transform: translateX(850px);">123</div>
 </body>
 <script>
     window.onload = function(){
@@ -49,10 +49,8 @@
             targets: '#el',
             translateX: 250,
             borderWidth: 30,
-            blur: {
-                value: 30,
-                duration: 5000
-            }
+            fontSize: 50,
+            boxShadow: '0 5px 15px rgba(0,0,0,0.3)',
         });
         cssSelector.seek(0.1)
     }

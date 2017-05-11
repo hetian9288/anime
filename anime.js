@@ -48,7 +48,7 @@
   const validTransforms = ['translateX', 'translateY', 'translateZ', 'rotate', 'rotateX', 'rotateY', 'rotateZ', 'scale', 'scaleX', 'scaleY', 'scaleZ', 'skewX', 'skewY'];
   let transformString;
 
-  let validFilter = ['grayscale', 'sepia', 'saturate', 'hue-rotate', 'invert', 'opacity', 'brightness', 'contrast', 'blur'];
+  let validFilter = ['grayscale', 'sepia', 'saturate', 'hue-rotate', 'invert', 'brightness', 'contrast', 'blur'];
   let filterString = 'filter';
 
   // Utils

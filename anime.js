@@ -761,6 +761,15 @@
             const t = 'transform';
             transformString = (getCSSValue(document.body, t) ? t : `-webkit-${t}`);
           }
+          // 将rotate(*) 放到最后
+          const rArr = [];
+          transforms[id].forEach((item, index) => {
+            if(item.indexOf('rotate') > -1) {
+              rArr.push(item);
+              transforms[id].splice(index, 1);
+            }
+          });
+          transforms[id] = transforms[id].concat(rArr);
           instance.animatables[id].target.style[transformString] = transforms[id].join(' ');
         }
       }
